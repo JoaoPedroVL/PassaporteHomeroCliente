@@ -11,7 +11,8 @@ import '../theme/app_theme.dart';
 
 /// Troca obrigatória da senha inicial no primeiro acesso do viajante.
 ///
-/// O ADM cria a conta com a senha padrão e marca `must_change_password`.
+/// O ADM cria a conta com uma senha temporária aleatória e marca
+/// `must_change_password`.
 /// Aqui o cliente atualiza a senha no Auth e chama a RPC
 /// `mark_password_changed()` para liberar o app.
 class ChangePasswordPage extends StatefulWidget {
@@ -101,7 +102,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     }
     if (mensagem.contains('weak password') ||
         mensagem.contains('password should be')) {
-      return 'Escolha uma senha mais forte, com pelo menos 6 caracteres.';
+      return 'Escolha uma senha mais forte, com pelo menos 8 caracteres.';
     }
     if (mensagem.contains('rate limit') || erro.statusCode == '429') {
       return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
@@ -122,8 +123,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   String? _validarSenha(String? valor) {
     final senha = valor ?? '';
     if (senha.isEmpty) return 'Informe a nova senha.';
-    if (senha.length < 6) return 'Use pelo menos 6 caracteres.';
-    if (senha == '123456') return 'Escolha uma senha diferente da inicial.';
+    if (senha.length < 8) return 'Use pelo menos 8 caracteres.';
+    if (senha == '123456') return 'Escolha uma senha mais forte.';
     return null;
   }
 
@@ -278,8 +279,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 onPressed: _salvando || _saindo
                                     ? null
                                     : () => setState(
-                                        () =>
-                                            _senhaVisivel = !_senhaVisivel,
+                                        () => _senhaVisivel = !_senhaVisivel,
                                       ),
                                 icon: Icon(
                                   _senhaVisivel
@@ -332,9 +332,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   Expanded(
                                     child: Text(
                                       _erro!,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: AppColors.danger,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: AppColors.danger),
                                     ),
                                   ),
                                 ],

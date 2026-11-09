@@ -18,14 +18,11 @@ import '../widgets/loading_state.dart';
 import '../widgets/passport_stamp.dart';
 import '../widgets/responsive_body.dart';
 import '../widgets/section_title.dart';
+import '../widgets/trip_padlet.dart';
 
 /// Detalhes da viagem: roteiro, checklist, contatos e avaliação.
 class TripDetailPage extends StatefulWidget {
-  const TripDetailPage({
-    super.key,
-    required this.viagem,
-    required this.perfil,
-  });
+  const TripDetailPage({super.key, required this.viagem, required this.perfil});
 
   final Trip viagem;
   final UserProfile perfil;
@@ -110,11 +107,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
         }
       }
       final diasComAnotacoes = dias
-          .map(
-            (dia) => dia.copyWith(
-              annotations: porDia[dia.id] ?? const [],
-            ),
-          )
+          .map((dia) => dia.copyWith(annotations: porDia[dia.id] ?? const []))
           .toList(growable: false);
 
       if (!mounted) return;
@@ -188,16 +181,13 @@ class _TripDetailPageState extends State<TripDetailPage> {
         conteudo: texto,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Anotação salva.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Anotação salva.')));
       await _carregar(silencioso: true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(mensagemDeErro(e, acao: 'salvar a anotação')),
-        ),
+        SnackBar(content: Text(mensagemDeErro(e, acao: 'salvar a anotação'))),
       );
     }
   }
@@ -225,9 +215,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
       setState(() => _checklist = anterior);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            mensagemDeErro(e, acao: 'atualizar o checklist'),
-          ),
+          content: Text(mensagemDeErro(e, acao: 'atualizar o checklist')),
         ),
       );
     }
@@ -246,16 +234,13 @@ class _TripDetailPageState extends State<TripDetailPage> {
         comentario: _comentarioCtrl.text,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Avaliação salva.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Avaliação salva.')));
       await _carregar(silencioso: true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(mensagemDeErro(e, acao: 'salvar a avaliação')),
-        ),
+        SnackBar(content: Text(mensagemDeErro(e, acao: 'salvar a avaliação'))),
       );
     } finally {
       if (mounted) setState(() => _salvandoAvaliacao = false);
@@ -264,9 +249,8 @@ class _TripDetailPageState extends State<TripDetailPage> {
 
   void _copiarContato(String texto) {
     Clipboard.setData(ClipboardData(text: texto));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Contato copiado.')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Contato copiado.')));
   }
 
   @override
@@ -304,7 +288,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
     }
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: ResponsiveBody(
         child: Column(
           children: [
@@ -312,8 +296,12 @@ class _TripDetailPageState extends State<TripDetailPage> {
             Material(
               color: AppColors.parchment,
               child: const TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelPadding: EdgeInsets.symmetric(horizontal: 14),
                 tabs: [
                   Tab(text: 'Roteiro'),
+                  Tab(text: 'Padlet'),
                   Tab(text: 'Checklist'),
                   Tab(text: 'Contatos'),
                   Tab(text: 'Avaliação'),
@@ -329,6 +317,13 @@ class _TripDetailPageState extends State<TripDetailPage> {
               child: TabBarView(
                 children: [
                   _abaRoteiro(),
+                  TripPadlet(
+                    perfil: widget.perfil,
+                    viagens: [viagem],
+                    tripInicial: viagem.id,
+                    mostrarSeletor: false,
+                    mostrarCabecalho: false,
+                  ),
                   _abaChecklist(),
                   _abaContatos(),
                   _abaAvaliacao(viagem),
@@ -358,8 +353,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
               child: EmptyState(
                 icon: Icons.map_outlined,
                 titulo: 'Roteiro em preparação',
-                mensagem:
-                    'O administrador ainda não publicou o roteiro desta viagem.',
+                mensagem: 'O administrador ainda não publicou o roteiro desta viagem.',
               ),
             )
           else ...[
@@ -367,12 +361,12 @@ class _TripDetailPageState extends State<TripDetailPage> {
               const SectionTitle(titulo: 'Trajeto'),
               const SizedBox(height: 10),
               ..._roteiro.asMap().entries.map(
-                    (entrada) => _RouteStepTile(
-                      numero: entrada.key + 1,
-                      passo: entrada.value,
-                      ultimo: entrada.key == _roteiro.length - 1,
-                    ),
-                  ),
+                (entrada) => _RouteStepTile(
+                  numero: entrada.key + 1,
+                  passo: entrada.value,
+                  ultimo: entrada.key == _roteiro.length - 1,
+                ),
+              ),
               if (_dias.isNotEmpty) const SizedBox(height: 18),
             ],
             if (_dias.isNotEmpty) ...[
@@ -433,9 +427,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                         Expanded(
                           child: Text(
                             'Preparativos da viagem',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontSize: 20),
                           ),
                         ),
@@ -527,10 +519,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
             ..._contatos.map(
               (contato) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _ContactCard(
-                  contato: contato,
-                  onCopiar: _copiarContato,
-                ),
+                child: _ContactCard(contato: contato, onCopiar: _copiarContato),
               ),
             ),
         ],
@@ -568,9 +557,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                   Text(
                     'A avaliação será liberada após a viagem',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
+                    style: Theme.of(context).textTheme.titleLarge
                         ?.copyWith(fontSize: 20),
                   ),
                   const SizedBox(height: 7),
@@ -605,9 +592,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                 children: [
                   Text(
                     jaAvaliada ? 'Sua avaliação' : 'Como foi a viagem?',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
+                    style: Theme.of(context).textTheme.titleLarge
                         ?.copyWith(fontSize: 22),
                   ),
                   const SizedBox(height: 4),
@@ -615,7 +600,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                     jaAvaliada
                         ? 'Você pode atualizar sua nota e seu comentário.'
                         : 'Sua opinião ajuda o administrador a preparar as '
-                            'próximas viagens.',
+                              'próximas viagens.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 12),
@@ -670,8 +655,8 @@ class _TripDetailPageState extends State<TripDetailPage> {
                         _salvandoAvaliacao
                             ? 'Salvando...'
                             : jaAvaliada
-                                ? 'Atualizar avaliação'
-                                : 'Enviar avaliação',
+                            ? 'Atualizar avaliação'
+                            : 'Enviar avaliação',
                       ),
                     ),
                   ),
@@ -681,9 +666,8 @@ class _TripDetailPageState extends State<TripDetailPage> {
                       _avaliacao?.submittedAt == null
                           ? 'Avaliação registrada.'
                           : 'Registrada em ${dataHoraBR(_avaliacao!.submittedAt)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontSize: 10,
-                          ),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(fontSize: 10),
                     ),
                   ],
                 ],
@@ -708,8 +692,8 @@ class _Hero extends StatelessWidget {
     final status = viagem.futura
         ? 'Próxima viagem'
         : encerrada
-            ? 'Viagem encerrada'
-            : 'Em andamento';
+        ? 'Viagem encerrada'
+        : 'Em andamento';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -776,8 +760,10 @@ class _Hero extends StatelessWidget {
                 ],
                 const SizedBox(height: 12),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gold.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(999),
@@ -841,10 +827,7 @@ class _HeroLinha extends StatelessWidget {
             texto,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-            ),
+            style: const TextStyle(fontSize: 12, color: Colors.white70),
           ),
         ),
       ],
@@ -890,12 +873,7 @@ class _RouteStepTile extends StatelessWidget {
                 ),
               ),
             ),
-            if (!ultimo)
-              Container(
-                width: 2,
-                height: 54,
-                color: AppColors.line,
-              ),
+            if (!ultimo) Container(width: 2, height: 54, color: AppColors.line),
           ],
         ),
         const SizedBox(width: 12),
@@ -908,10 +886,7 @@ class _RouteStepTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      passo.title,
-                      style: theme.textTheme.titleSmall,
-                    ),
+                    Text(passo.title, style: theme.textTheme.titleSmall),
                     if (passo.description != null) ...[
                       const SizedBox(height: 4),
                       Text(
@@ -973,10 +948,7 @@ class _DayCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        dia.title,
-                        style: theme.textTheme.titleMedium,
-                      ),
+                      Text(dia.title, style: theme.textTheme.titleMedium),
                       if (dia.date != null) ...[
                         const SizedBox(height: 2),
                         Text(

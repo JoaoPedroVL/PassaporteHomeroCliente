@@ -19,8 +19,7 @@ bool cpfValido(String valor) {
     return resto == 10 ? 0 : resto;
   }
 
-  return digito(10) == int.parse(cpf[9]) &&
-      digito(11) == int.parse(cpf[10]);
+  return digito(10) == int.parse(cpf[9]) && digito(11) == int.parse(cpf[10]);
 }
 
 /// Formata para 000.000.000-00 sem quebrar entradas parciais.
@@ -45,6 +44,23 @@ String cpfAuthEmail(String valor) {
   return '$cpf@cpf.passaportebrasil.local';
 }
 
+/// Campo somente de CPF, formatado enquanto o usuário digita.
+class CpfInputFormatter extends TextInputFormatter {
+  const CpfInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final formatado = formatarCpf(newValue.text);
+    return TextEditingValue(
+      text: formatado,
+      selection: TextSelection.collapsed(offset: formatado.length),
+    );
+  }
+}
+
 /// Campo que aceita CPF ou e-mail: formata apenas quando o texto ainda
 /// não contém "@" nem letras, preservando e-mails digitados.
 class CpfOrEmailInputFormatter extends TextInputFormatter {
@@ -56,7 +72,8 @@ class CpfOrEmailInputFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     final texto = newValue.text;
-    final pareceEmail = texto.contains('@') || RegExp(r'[A-Za-z]').hasMatch(texto);
+    final pareceEmail =
+        texto.contains('@') || RegExp(r'[A-Za-z]').hasMatch(texto);
     if (pareceEmail) return newValue;
 
     final formatado = formatarCpf(texto);

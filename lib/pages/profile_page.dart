@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../core/cpf.dart';
 import '../core/formatters.dart';
+import '../core/privacy.dart';
 import '../core/supabase_client.dart';
 import '../models/user_profile.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand_app_bar.dart';
+import '../widgets/privacy_policy_dialog.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/responsive_body.dart';
 import '../widgets/section_title.dart';
@@ -89,9 +91,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     Text(
                       perfil.fullName,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
+                      style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontSize: 24),
                     ),
                     const SizedBox(height: 4),
@@ -129,13 +129,14 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 10),
             Card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 child: Column(
                   children: [
                     _InfoLinha(
-                      icon: temCpf
-                          ? Icons.badge_outlined
-                          : Icons.mail_outline,
+                      icon: temCpf ? Icons.badge_outlined : Icons.mail_outline,
                       label: temCpf ? 'CPF' : 'E-mail',
                       value: temCpf
                           ? formatarCpf(cpfTexto)
@@ -204,9 +205,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         children: [
                           Text(
                             'Passaporte Brasil',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontSize: 20),
                           ),
                           const SizedBox(height: 3),
@@ -228,6 +227,37 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 22),
+            const SectionTitle(titulo: 'Privacidade'),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                leading: const Icon(
+                  Icons.privacy_tip_outlined,
+                  color: AppColors.gold,
+                ),
+                title: const Text(
+                  'Aviso de Privacidade',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Versão $privacyPolicyVersion • $privacyContactEmail',
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.muted,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.muted,
+                ),
+                onTap: () => showPrivacyPolicyDialog(context),
               ),
             ),
             const SizedBox(height: 24),

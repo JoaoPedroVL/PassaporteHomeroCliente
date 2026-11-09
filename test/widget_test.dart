@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:passaporte_viagens/core/cpf.dart';
+import 'package:passaporte_viagens/core/data_br.dart';
+import 'package:passaporte_viagens/core/error_messages.dart';
 import 'package:passaporte_viagens/core/formatters.dart';
+import 'package:passaporte_viagens/core/photo_mime.dart';
 import 'package:passaporte_viagens/models/trip.dart';
 import 'package:passaporte_viagens/models/user_profile.dart';
 import 'package:passaporte_viagens/models/wall_post.dart';
 import 'package:passaporte_viagens/pages/account_blocked_page.dart';
+import 'package:passaporte_viagens/pages/activation_page.dart';
 import 'package:passaporte_viagens/pages/change_password_page.dart';
 import 'package:passaporte_viagens/pages/login_page.dart';
+import 'package:passaporte_viagens/pages/privacy_consent_page.dart';
 import 'package:passaporte_viagens/pages/startup_error_app.dart';
 
 void main() {
@@ -36,6 +42,28 @@ void main() {
     });
   });
 
+  group('fotos do Padlet', () {
+    test('normaliza o MIME type para o bucket wall-photos', () {
+      expect(mimeDaFoto('jpg', null), 'image/jpeg');
+      expect(mimeDaFoto('jpg', 'image/jpg'), 'image/jpeg');
+      expect(mimeDaFoto('jpeg', 'image/jpeg'), 'image/jpeg');
+      expect(mimeDaFoto('png', null), 'image/png');
+      expect(mimeDaFoto('webp', null), 'image/webp');
+    });
+
+    test('traduz MIME inválido do Storage em mensagem amigável', () {
+      expect(
+        mensagemDeErro(
+          const StorageException(
+            'mime type image/jpg is not supported',
+            statusCode: '400',
+          ),
+        ),
+        'Formato de foto não suportado. Use JPG, PNG ou WebP.',
+      );
+    });
+  });
+
   group('dataBR', () {
     test('formata com zero à esquerda', () {
       expect(dataBR(DateTime(2027, 1, 5)), '05/01/2027');
@@ -43,6 +71,48 @@ void main() {
 
     test('retorna vazio quando a data é nula', () {
       expect(dataBR(null), '');
+    });
+  });
+
+  group('data de nascimento', () {
+    test('aceita 8 dígitos e aplica a máscara', () {
+      expect(formatarDataBr('18122001'), '18/12/2001');
+      expect(formatarDataBr('18/12/2001'), '18/12/2001');
+      expect(formatarDataBr('181'), '18/1');
+      expect(formatarDataBr(''), '');
+    });
+
+    test('converte texto com ou sem barras', () {
+      expect(parseDataBr('18122001'), DateTime(2001, 12, 18));
+      expect(parseDataBr('18/12/2001'), DateTime(2001, 12, 18));
+      expect(parseDataBr('18/12'), isNull);
+      expect(parseDataBr(''), isNull);
+    });
+
+    test('recusa datas que não existem no calendário', () {
+      expect(parseDataBr('31/02/2001'), isNull);
+      expect(parseDataBr('18/13/2001'), isNull);
+      expect(parseDataBr('00/12/2001'), isNull);
+      expect(parseDataBr('18/00/2001'), isNull);
+    });
+
+    test('recusa data no futuro e ano fora da faixa', () {
+      final hoje = DateTime(2026, 10, 29);
+      expect(validarDataNascimento('29/10/2026', hoje: hoje), isNull);
+      expect(validarDataNascimento('30/10/2026', hoje: hoje), isNotNull);
+      expect(validarDataNascimento('18/12/2154', hoje: hoje), isNotNull);
+      expect(validarDataNascimento('18/12/1899', hoje: hoje), isNotNull);
+      expect(validarDataNascimento('', hoje: hoje), isNotNull);
+      expect(validarDataNascimento('18/12', hoje: hoje), isNotNull);
+    });
+
+    test('backspace na barra apaga também o dígito anterior', () {
+      const formatador = DataBrInputFormatter();
+      final valor = formatador.formatEditUpdate(
+        const TextEditingValue(text: '18/12/'),
+        const TextEditingValue(text: '18/12'),
+      );
+      expect(valor.text, '18/1');
     });
   });
 
@@ -102,6 +172,46 @@ void main() {
     });
   });
 
+  group('Trip.encerrada', () {
+    Trip viagem({required DateTime? fim, String status = 'published'}) {
+      return Trip(
+        id: 'abc',
+        title: 'Viagem',
+        destination: 'Destino',
+        startDate: DateTime(2020, 1, 1),
+        endDate: fim,
+        status: status,
+      );
+    }
+
+    test('viagem que termina hoje ainda aceita publicação', () {
+      final hoje = DateTime.now();
+      expect(
+        viagem(fim: DateTime(hoje.year, hoje.month, hoje.day)).encerrada,
+        isFalse,
+      );
+    });
+
+    test('viagem que terminou ontem fica somente leitura', () {
+      final ontem = DateTime.now().subtract(const Duration(days: 1));
+      expect(
+        viagem(fim: DateTime(ontem.year, ontem.month, ontem.day)).encerrada,
+        isTrue,
+      );
+    });
+
+    test('status closed encerra mesmo com data futura', () {
+      expect(
+        viagem(fim: DateTime(2099, 1, 1), status: 'closed').encerrada,
+        isTrue,
+      );
+    });
+
+    test('sem data de fim não é considerada encerrada', () {
+      expect(viagem(fim: null).encerrada, isFalse);
+    });
+  });
+
   testWidgets('login valida campos vazios antes de chamar o Supabase', (
     tester,
   ) async {
@@ -123,6 +233,80 @@ void main() {
 
     expect(find.text('Não foi possível iniciar'), findsOneWidget);
     expect(find.text('Falha simulada de configuração.'), findsOneWidget);
+  });
+
+  group('UserProfile LGPD', () {
+    test('lê nascimento, responsável e consentimentos', () {
+      final anoMenor = DateTime.now().year - 10;
+      final perfil = UserProfile.fromMap({
+        'id': 'u1',
+        'full_name': 'Viajante Teste',
+        'email': 'teste@local',
+        'role': 'traveler',
+        'status': 'active',
+        'birth_date': '$anoMenor-05-10',
+        'guardian_name': 'Maria',
+        'guardian_contact': '11999999999',
+        'privacy_accepted_at': '2026-10-27T10:00:00Z',
+        'privacy_version': '2026-10-27',
+        'guardian_consent_at': '2026-10-27T10:00:00Z',
+        'image_consent_at': '2026-10-27T10:05:00Z',
+        'image_consent_version': '2026-10-27',
+      });
+
+      expect(perfil.birthDate, DateTime(anoMenor, 5, 10));
+      expect(perfil.guardianName, 'Maria');
+      expect(perfil.guardianContact, '11999999999');
+      expect(perfil.privacyVersion, '2026-10-27');
+      expect(perfil.guardianConsentAt, isNotNull);
+      expect(perfil.imageConsentAt, isNotNull);
+      expect(perfil.menorDeIdade, isTrue);
+    });
+
+    test('reconhece viajante adulto', () {
+      final anoAdulto = DateTime.now().year - 30;
+      final perfil = UserProfile.fromMap({
+        'id': 'u2',
+        'full_name': 'Viajante Adulto',
+        'email': 'adulto@local',
+        'role': 'traveler',
+        'status': 'active',
+        'birth_date': '$anoAdulto-01-01',
+      });
+
+      expect(perfil.menorDeIdade, isFalse);
+    });
+  });
+
+  group('ActivationPage', () {
+    testWidgets('mostra CPF, código e criação de senha', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: ActivationPage()));
+
+      expect(find.text('Ativar meu cadastro'), findsOneWidget);
+      expect(find.text('Código de ativação'), findsOneWidget);
+      expect(find.text('Criar senha'), findsOneWidget);
+    });
+  });
+
+  group('PrivacyConsentPage', () {
+    testWidgets('mostra dados e aceite obrigatórios', (tester) async {
+      const perfil = UserProfile(
+        id: 'u1',
+        fullName: 'Viajante Teste',
+        email: 'teste@local',
+        role: 'traveler',
+        status: 'active',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PrivacyConsentPage(perfil: perfil, onConcluido: () {}),
+        ),
+      );
+
+      expect(find.text('Antes de começar'), findsOneWidget);
+      expect(find.text('Data de nascimento'), findsOneWidget);
+    });
   });
 
   group('AccountBlockedPage', () {
@@ -180,11 +364,7 @@ void main() {
         ],
       });
 
-      expect(post.imagePaths, [
-        'u1/p1/0.jpg',
-        'u1/p1/1.jpg',
-        'u1/p1/2.jpg',
-      ]);
+      expect(post.imagePaths, ['u1/p1/0.jpg', 'u1/p1/1.jpg', 'u1/p1/2.jpg']);
       expect(post.tripTitle, 'São Paulo');
       expect(post.aprovado, isTrue);
     });

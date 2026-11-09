@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/cpf.dart';
 import '../core/supabase_client.dart';
 import '../theme/app_theme.dart';
+import 'activation_page.dart';
 
 /// Tela de login do viajante.
 class LoginPage extends StatefulWidget {
@@ -50,10 +51,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       await supabase.auth
-          .signInWithPassword(
-            email: email,
-            password: _senhaCtrl.text,
-          )
+          .signInWithPassword(email: email, password: _senhaCtrl.text)
           .timeout(const Duration(seconds: 20));
       TextInput.finishAutofillContext();
       // O AuthGate detecta a sessão e troca de tela automaticamente.
@@ -105,9 +103,8 @@ class _LoginPageState extends State<LoginPage> {
     if (texto.isEmpty) return 'Informe seu CPF ou e-mail.';
 
     if (texto.contains('@')) {
-      final formatoValido = RegExp(
-        r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-      ).hasMatch(texto);
+      final formatoValido = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+          .hasMatch(texto);
       return formatoValido ? null : 'Informe um e-mail válido.';
     }
 
@@ -260,9 +257,7 @@ class _LoginPageState extends State<LoginPage> {
                                 enabled: !_carregando,
                                 keyboardType: TextInputType.text,
                                 textInputAction: TextInputAction.next,
-                                autofillHints: const [
-                                  AutofillHints.username,
-                                ],
+                                autofillHints: const [AutofillHints.username],
                                 autocorrect: false,
                                 enableSuggestions: false,
                                 inputFormatters: const [
@@ -303,7 +298,8 @@ class _LoginPageState extends State<LoginPage> {
                                     onPressed: _carregando
                                         ? null
                                         : () => setState(
-                                            () => _senhaVisivel = !_senhaVisivel,
+                                            () =>
+                                                _senhaVisivel = !_senhaVisivel,
                                           ),
                                     icon: Icon(
                                       _senhaVisivel
@@ -324,12 +320,11 @@ class _LoginPageState extends State<LoginPage> {
                                   const SizedBox(width: 5),
                                   Expanded(
                                     child: Text(
-                                      'Viajantes entram com o CPF. A senha '
-                                      'inicial é 123456 e deve ser trocada no '
-                                      'primeiro acesso.',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: 10,
-                                      ),
+                                      'Viajantes entram com o CPF. Use a senha '
+                                      'temporária entregue pelo administrador; '
+                                      'ela deve ser trocada no primeiro acesso.',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(fontSize: 10),
                                     ),
                                   ),
                                 ],
@@ -364,8 +359,8 @@ class _LoginPageState extends State<LoginPage> {
                                           _erro!,
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                            color: AppColors.danger,
-                                          ),
+                                                color: AppColors.danger,
+                                              ),
                                         ),
                                       ),
                                     ],
@@ -389,7 +384,25 @@ class _LoginPageState extends State<LoginPage> {
                                       : const Text('Entrar'),
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 10),
+                              TextButton.icon(
+                                onPressed: _carregando
+                                    ? null
+                                    : () => Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) =>
+                                              const ActivationPage(),
+                                        ),
+                                      ),
+                                icon: const Icon(
+                                  Icons.vpn_key_outlined,
+                                  size: 16,
+                                ),
+                                label: const Text(
+                                  'Ativar meu cadastro com código',
+                                ),
+                              ),
+                              const SizedBox(height: 8),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -403,10 +416,11 @@ class _LoginPageState extends State<LoginPage> {
                                     child: Text(
                                       'Acesso seguro e exclusivo para viajantes',
                                       textAlign: TextAlign.center,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: 10,
-                                        color: AppColors.muted,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            fontSize: 10,
+                                            color: AppColors.muted,
+                                          ),
                                     ),
                                   ),
                                 ],

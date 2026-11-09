@@ -44,9 +44,14 @@ docs/screenshots/ capturas das telas
 ## Comportamento
 
 - Sem sessão → tela de login.
-- Login por **CPF ou e-mail**. O ADM cria o viajante com CPF e senha inicial
-  `123456`; o cliente converte o CPF no e-mail interno do Supabase Auth
+- Login por **CPF ou e-mail**. Contas importadas pela instituição recebem um
+  **código de ativação individual**; o aluno usa "Ativar meu cadastro com
+  código", informa CPF + código e cria a própria senha. O cliente converte o
+  CPF no e-mail interno do Supabase Auth
   (`<cpf>@cpf.passaportebrasil.local`) sem exibir isso ao viajante.
+- No primeiro acesso após a ativação, o aluno aceita o Aviso de Privacidade e,
+  se menor, informa o responsável legal. O consentimento de imagem é pedido
+  antes de publicar fotos no mural.
 - No primeiro acesso, `must_change_password = true` abre a tela de criação de
   senha. A troca usa `auth.updateUser` + RPC `mark_password_changed()`.
 - Com sessão → `AccountGate` consulta o perfil em `users`:
@@ -59,14 +64,23 @@ docs/screenshots/ capturas das telas
 - Passaporte mostra as viagens em que o viajante é participante, separadas em
   Em andamento, Próximos carimbos e Já vividas.
 - Insígnias mostra a coleção (conquistadas e bloqueadas) e o progresso.
-- **Padlet por viagem**: cada viagem tem seu próprio mural, com capa, seletor de
-  viagem, composer de texto + até 4 fotos e feed filtrado. Ao publicar a
-  primeira memória, o Padlet daquela viagem passa a existir. As fotos vão para o
-  bucket privado `wall-photos` e são exibidas por URL assinada.
+- **Padlet por viagem**: cada viagem tem seu próprio mural. A aba global
+  "Padlet" funciona como visão geral e permite alternar entre as viagens; dentro
+  do detalhe de cada viagem, a aba "Padlet" abre o mural daquela viagem, com
+  composer de texto + até 4 fotos e feed filtrado. Ao publicar a primeira
+  memória, o Padlet daquela viagem passa a existir. As fotos vão para o bucket
+  privado `wall-photos` e são exibidas por URL assinada. O MIME type é
+  normalizado para `image/jpeg`, `image/png` ou `image/webp`, os formatos
+  aceitos pelo bucket (o seletor do Linux devolve `mimeType` nulo).
 - Posts passam por moderação (`pending` → `approved`) antes de aparecer para o
   grupo. O autor sempre vê o próprio post, mesmo pendente.
-- Detalhe da viagem: roteiro, dia a dia com anotações pessoais, checklist,
-  contatos de emergência e avaliação.
+- **Depois do último dia da viagem o Padlet fica somente leitura**: não é
+  possível publicar novas memórias nem anexar fotos. As memórias já publicadas
+  continuam visíveis. A regra vale no banco (`can_post_in_trip`, fuso
+  `America/Sao_Paulo`) e na interface, que troca o composer por um aviso.
+  Administradores da viagem continuam podendo moderar.
+- Detalhe da viagem: roteiro, Padlet, dia a dia com anotações pessoais,
+  checklist, contatos de emergência e avaliação.
 - Pull-to-refresh, atualização manual e Realtime.
 - `touch_last_seen()` registra o último acesso; `public_profiles` expõe apenas
   id + nome para os autores do mural.
@@ -116,6 +130,21 @@ alter publication supabase_realtime add table public.wall_post_images;
 
 Sem esse passo, o app continua funcionando com atualização manual e
 pull-to-refresh.
+
+### Escopo das assinaturas
+
+O Padlet assina `wall_posts` **filtrado por `trip_id`**: cada cliente recebe
+apenas eventos da viagem que está aberta. Antes o canal escutava a tabela
+inteira e cada publicação de qualquer viagem fazia todos os clientes
+recarregarem o mural.
+
+As recargas são agrupadas por um debounce de 350 ms, então uma publicação
+com 4 fotos gera uma única consulta em vez de cinco.
+
+`wall_post_images` não tem `trip_id`; por isso o cliente só reage a imagens
+de posts que já estão carregados na viagem atual.
+
+Ao trocar de viagem, o canal é recriado com o novo filtro.
 
 ## Capturas
 

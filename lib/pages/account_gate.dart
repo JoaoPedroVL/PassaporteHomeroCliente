@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/privacy.dart';
 import '../core/supabase_client.dart';
 import '../data/consultas.dart';
 import '../models/user_profile.dart';
@@ -10,6 +11,7 @@ import '../widgets/loading_state.dart';
 import 'account_blocked_page.dart';
 import 'app_shell.dart';
 import 'change_password_page.dart';
+import 'privacy_consent_page.dart';
 
 /// Verifica o perfil do usuário antes de liberar o app.
 ///
@@ -39,6 +41,7 @@ class _AccountGateState extends State<AccountGate> {
   @override
   void initState() {
     super.initState();
+    imageConsentAcceptedInSession = false;
 
     _canal = supabase
         .channel('cliente:perfil')
@@ -90,7 +93,10 @@ class _AccountGateState extends State<AccountGate> {
           .from('users')
           .select(
             'id, full_name, email, cpf, role, status, group_id, '
-            'must_change_password, created_at, last_seen_at, groups(name)',
+            'must_change_password, created_at, last_seen_at, '
+            'birth_date, guardian_name, guardian_contact, '
+            'privacy_accepted_at, privacy_version, guardian_consent_at, '
+            'image_consent_at, image_consent_version, groups(name)',
           )
           .eq('id', usuario.id)
           .maybeSingle()
@@ -156,6 +162,17 @@ class _AccountGateState extends State<AccountGate> {
     }
   }
 
+  bool _consentimentoOk(UserProfile perfil) {
+    if (perfil.privacyAcceptedAt == null ||
+        perfil.privacyVersion != privacyPolicyVersion) {
+      return false;
+    }
+    if (perfil.menorDeIdade && perfil.guardianConsentAt == null) {
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_carregando) {
@@ -209,6 +226,13 @@ class _AccountGateState extends State<AccountGate> {
         perfil: perfil,
         onConcluido: () => _carregarPerfil(),
         onSair: _sair,
+      );
+    }
+
+    if (!_consentimentoOk(perfil)) {
+      return PrivacyConsentPage(
+        perfil: perfil,
+        onConcluido: () => _carregarPerfil(),
       );
     }
 
